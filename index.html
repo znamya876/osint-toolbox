@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Znamya — OSINT Toolbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10;
+    --surface: #0d1117;
+    --surface2: #161b22;
+    --surface3: #21262d;
+    --border: #30363d;
+    --accent: #ff6b35;
+    --accent2: #ff9a5c;
+    --accent3: #e84545;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --text-dim: #484f58;
+    --free: #ff6b35;
+    --partial: #ffc04d;
+    --paid: #e84545;
+    --unknown: #8b949e;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-body: 'Barlow', sans-serif;
+    --font-cond: 'Barlow Condensed', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255,107,53,0.012) 2px,
+      rgba(255,107,53,0.012) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── HEADER ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(255,107,53,0.04) 0%, transparent 100%);
+    padding: 0 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+
+  .header-inner {
+    max-width: 1600px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    height: 64px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+
+  .logo-icon {
+    width: 48px;
+    height: 48px;
+    position: relative;
+  }
+
+  .logo-icon svg { width: 100%; height: 100%; }
+
+  .logo-text {
+    font-family: var(--font-cond);
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  .logo-sub {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    display: block;
+    margin-top: -2px;
+  }
+
+  .header-stats {
+    margin-left: auto;
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+  }
+
+  .stat {
+    text-align: right;
+  }
+
+  .stat-num {
+    font-family: var(--font-mono);
+    font-size: 1.1rem;
+    color: var(--accent);
+    display: block;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 3rem 2rem 2rem;
+    max-width: 1600px;
+    margin: 0 auto;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hero-tag {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--accent);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .hero-tag::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  h1 {
+    font-family: var(--font-cond);
+    font-size: clamp(2rem, 5vw, 4rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .hero-desc {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    max-width: 600px;
+    line-height: 1.6;
+    margin-top: 0.75rem;
+  }
+
+  /* ── SEARCH + FILTERS ── */
+  .controls {
+    padding: 1.5rem 2rem;
+    max-width: 1600px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .search-wrap {
+    flex: 1;
+    min-width: 280px;
+    position: relative;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    pointer-events: none;
+  }
+
+  #search {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  #search:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255,107,53,0.15);
+  }
+
+  #search::placeholder { color: var(--text-dim); }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .filter-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    padding: 0.4rem 0.85rem;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-btn:hover {
+    border-color: var(--accent2);
+    color: var(--accent2);
+  }
+
+  .filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    font-weight: 600;
+  }
+
+  .filter-btn.cost-free.active   { background: var(--free); border-color: var(--free); color: #000; }
+  .filter-btn.cost-partial.active{ background: var(--partial); border-color: var(--partial); color: #000; }
+  .filter-btn.cost-paid.active   { background: var(--paid); border-color: var(--paid); color: #fff; }
+
+  /* ── CATEGORY NAV ── */
+  .cat-nav {
+    padding: 0 2rem 1.25rem;
+    max-width: 1600px;
+    margin: 0 auto;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .cat-btn {
+    padding: 0.3rem 0.75rem;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-family: var(--font-cond);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .cat-btn:hover { border-color: var(--accent2); color: var(--text); }
+
+  .cat-btn.active {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: rgba(0,191,255,0.08);
+  }
+
+  /* ── RESULT COUNT ── */
+  .result-bar {
+    padding: 0.5rem 2rem;
+    max-width: 1600px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .result-count {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .result-count span { color: var(--accent); }
+
+  .view-toggle {
+    margin-left: auto;
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .view-btn {
+    padding: 0.3rem 0.6rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s;
+  }
+
+  .view-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+  /* ── GRID ── */
+  .main {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 1rem 2rem 4rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  .grid.list-view {
+    grid-template-columns: 1fr;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    transition: background 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: transparent;
+    transition: background 0.2s;
+  }
+
+  .card:hover { background: var(--surface2); }
+  .card:hover::before { background: var(--accent); }
+
+  .card-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .card-icon {
+    width: 34px; height: 34px;
+    border-radius: 4px;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: -0.05em;
+  }
+
+  .card-title-wrap { flex: 1; min-width: 0; }
+
+  .card-name {
+    font-family: var(--font-cond);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-category {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .card-desc {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+
+  .cost-badge {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    border-radius: 2px;
+    font-weight: 600;
+  }
+
+  .cost-Free         { background: rgba(255,107,53,0.1); color: var(--free); border: 1px solid rgba(255,107,53,0.3); }
+  .cost-Partially-Free { background: rgba(255,192,77,0.1); color: var(--partial); border: 1px solid rgba(255,192,77,0.3); }
+  .cost-Paid         { background: rgba(232,69,69,0.1); color: var(--paid); border: 1px solid rgba(232,69,69,0.3); }
+  .cost-Unknown      { background: rgba(139,148,158,0.1); color: var(--unknown); border: 1px solid rgba(139,148,158,0.2); }
+
+  .card-link {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    transition: all 0.15s;
+    letter-spacing: 0.05em;
+  }
+
+  .card-link:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(255,107,53,0.07);
+  }
+
+  /* List view overrides */
+  .grid.list-view .card {
+    flex-direction: row;
+    align-items: center;
+    padding: 0.85rem 1.25rem;
+    gap: 1rem;
+  }
+
+  .grid.list-view .card-head { flex: 0 0 auto; width: 220px; }
+  .grid.list-view .card-desc { flex: 1; -webkit-line-clamp: 2; }
+  .grid.list-view .card-footer { flex-shrink: 0; }
+  .grid.list-view .card::before { width: 2px; }
+
+  /* ── EMPTY STATE ── */
+  .empty {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+  }
+
+  .empty::before {
+    content: '// NO RESULTS';
+    display: block;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 1.5rem 2rem;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card { animation: fadeIn 0.2s ease both; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    .grid.list-view .card { flex-direction: column; }
+    .grid.list-view .card-head { width: auto; }
+    header .stat:not(:first-child) { display: none; }
+    .header-stats { gap: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a href="#" class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Znamya space mirror: 8 mylar petal segments radiating from central hub,
+               held open by centrifugal force like the real 1992 deployment -->
+
+          <!-- Petal segments (8 triangular mylar panels, alternating opacity) -->
+          <!-- Each petal: tip at center hub, wide end at mirror rim -->
+          <!-- Petal 0: top -->
+          <path d="M24,24 L20,5 L28,5 Z"        fill="#ff6b35" opacity="0.85"/>
+          <!-- Petal 1: top-right -->
+          <path d="M24,24 L35,8  L43,17 Z"       fill="#ff9a5c" opacity="0.6"/>
+          <!-- Petal 2: right -->
+          <path d="M24,24 L43,20 L43,28 Z"       fill="#ff6b35" opacity="0.85"/>
+          <!-- Petal 3: bottom-right -->
+          <path d="M24,24 L43,31 L35,40 Z"       fill="#ff9a5c" opacity="0.6"/>
+          <!-- Petal 4: bottom -->
+          <path d="M24,24 L28,43 L20,43 Z"       fill="#ff6b35" opacity="0.85"/>
+          <!-- Petal 5: bottom-left -->
+          <path d="M24,24 L13,40 L5,31 Z"        fill="#ff9a5c" opacity="0.6"/>
+          <!-- Petal 6: left -->
+          <path d="M24,24 L5,28  L5,20 Z"        fill="#ff6b35" opacity="0.85"/>
+          <!-- Petal 7: top-left -->
+          <path d="M24,24 L5,17  L13,8 Z"        fill="#ff9a5c" opacity="0.6"/>
+
+          <!-- Spoke lines (structural cables holding mirror panels) -->
+          <line x1="24" y1="24" x2="24" y2="5"  stroke="#ff6b35" stroke-width="0.6" opacity="0.5"/>
+          <line x1="24" y1="24" x2="39" y2="9"  stroke="#ff6b35" stroke-width="0.6" opacity="0.5"/>
+          <line x1="24" y1="24" x2="43" y2="24" stroke="#ff6b35" stroke-width="0.6" opacity="0.5"/>
+          <line x1="24" y1="24" x2="39" y2="39" stroke="#ff6b35" stroke-width="0.6" opacity="0.5"/>
+          <line x1="24" y1="24" x2="24" y2="43" stroke="#ff6b35" stroke-width="0.6" opacity="0.5"/>
+          <line x1="24" y1="24" x2="9"  y2="39" stroke="#ff6b35" stroke-width="0.6" opacity="0.5"/>
+          <line x1="24" y1="24" x2="5"  y2="24" stroke="#ff6b35" stroke-width="0.6" opacity="0.5"/>
+          <line x1="24" y1="24" x2="9"  y2="9"  stroke="#ff6b35" stroke-width="0.6" opacity="0.5"/>
+
+          <!-- Outer rim circle (edge of the circular mirror) -->
+          <circle cx="24" cy="24" r="19" stroke="#ff6b35" stroke-width="0.8" opacity="0.35" fill="none"/>
+
+          <!-- Inner structural ring -->
+          <circle cx="24" cy="24" r="6"  stroke="#ff6b35" stroke-width="0.8" opacity="0.5" fill="none"/>
+
+          <!-- Central hub (Progress vehicle attachment mechanism) -->
+          <circle cx="24" cy="24" r="3"  fill="#ff6b35" opacity="1"/>
+          <circle cx="24" cy="24" r="1.2" fill="#080c10"/>
+
+          <!-- Reflection glint — simulates the mirror catching sunlight -->
+          <circle cx="18" cy="14" r="1.2" fill="#fff" opacity="0.5"/>
+        </svg>
+      </div>
+      <div>
+        <span class="logo-text">Znamya</span>
+        <span class="logo-sub">Shedding Light on Darkness</span>
+      </div>
+    </a>
+    <div class="header-stats">
+      <div class="stat">
+        <span class="stat-num" id="stat-total">308</span>
+        <span class="stat-label">Tools</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num">24</span>
+        <span class="stat-label">Categories</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="stat-free">—</span>
+        <span class="stat-label">Free</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="hero-tag">Open Source Intelligence</div>
+  <h1>OSINT <span>Toolbox</span></h1>
+  <p class="hero-desc">A curated database of open-source intelligence tools for researchers, journalists, and analysts. Browse by category, filter by cost, or search across all 308 tools.</p>
+</div>
+
+<div class="controls">
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input type="text" id="search" placeholder="Search tools, descriptions, categories..." autocomplete="off" spellcheck="false">
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Cost</span>
+    <div class="btn-row">
+      <button class="filter-btn cost-free active"   data-cost="all" id="cost-all">ALL</button>
+      <button class="filter-btn cost-free"           data-cost="Free">FREE</button>
+      <button class="filter-btn cost-partial"        data-cost="Partially Free">PARTIAL</button>
+      <button class="filter-btn cost-paid"           data-cost="Paid">PAID</button>
+    </div>
+  </div>
+</div>
+
+<div class="cat-nav" id="cat-nav">
+  <button class="cat-btn active" data-cat="all">All Categories</button>
+</div>
+
+<div class="result-bar">
+  <span class="result-count">Showing <span id="count">0</span> tools</span>
+  <div class="view-toggle">
+    <button class="view-btn active" id="view-grid" title="Grid view">⊞</button>
+    <button class="view-btn"        id="view-list" title="List view">≡</button>
+  </div>
+</div>
+
+<main class="main">
+  <div class="grid" id="grid"></div>
+</main>
+
+<footer>
+  ZNAMYA &nbsp;·&nbsp; Shedding Light on Darkness &nbsp;·&nbsp; znamya.solutions.com
+</footer>
+
+<script>
+const TOOLS = [{"Name": "Archive.today", "Category": "Archiving", "Cost": "Free", "Description": "Archive any webpage, including Facebook and search for archived pages.", "URL": "https://archive.today"}, {"Name": "Auto Archiver", "Category": "Archiving", "Cost": "Free", "Description": "Bellingcat's tool to automatically archive social media posts, videos, and images. Free and Open-Source.", "URL": "https://github.com/bellingcat/auto-archiver"}, {"Name": "Bellingcat TikTok Hashtag Analysis", "Category": "Archiving", "Cost": "Free", "Description": "Archive content and metadata from TikTok posts that contain one or more specified hashtags", "URL": "https://github.com/bellingcat/tiktok-hashtag-analysis"}, {"Name": "Distill.io", "Category": "Archiving", "Cost": "Partially Free", "Description": "Distill.io is a website change monitoring tool that allows users to track changes on web pages.", "URL": "https://distill.io/"}, {"Name": "Hunchly", "Category": "Archiving", "Cost": "Paid", "Description": "An archiving tool that tracks online activities and preserves essential information about the web pages researchers visit.", "URL": "https://www.hunch.ly/"}, {"Name": "Instant Data Scraper", "Category": "Archiving", "Cost": "Free", "Description": "Browser extension for simple web scraping, with table output", "URL": "https://webrobots.io/instantdata/"}, {"Name": "Kargoteka - RU site, visit at your own risk", "Category": "Archiving", "Cost": "Free", "Description": "Photo gallery of Russian freight and special vehicles (MoD, intelligence services throughout)", "URL": "http://kargoteka.info/extended_search.php"}, {"Name": "Lumen", "Category": "Archiving", "Cost": "Free", "Description": "A research project collecting and publishing legal takedown notices for online content transparency", "URL": "https://lumendatabase.org/"}, {"Name": "PlatesMania", "Category": "Archiving", "Cost": "Free", "Description": "Database holding Russian license plate information from previously taken photographs. ", "URL": "https://platesmania.com/ru/search"}, {"Name": "Wayback Machine", "Category": "Archiving", "Cost": "Free", "Description": "The Internet Archive's Wayback Machine lets users view and archive web pages, aiding in historical research and digital preservation.", "URL": "https://web.archive.org/"}, {"Name": "Web Archives", "Category": "Archiving", "Cost": "Free", "Description": "A browser extension to view archived and cached versions of a website on multiple archiving sites.", "URL": "https://apps.apple.com/us/app/web-archives-for-safari/id1603181853?platform=mac"}, {"Name": "527 Explorer", "Category": "Companies & Finance", "Cost": "Free", "Description": "ProPublica's 527 Explorer is a database that allows users to examine the finances of organizations known as 527s in the United States, which can raise unlimited sums for political purposes.", "URL": "https://projects.propublica.org/527-explorer/"}, {"Name": "BlockExplorer", "Category": "Companies & Finance", "Cost": "Free", "Description": "Following a bitcoin trail or following a bitcoin account?", "URL": "https://blockexplorer.com/"}, {"Name": "China-related resources", "Category": "Companies & Finance", "Cost": "Unknown", "Description": "Resources for research on companies in China.", "URL": "https://bellingcat.gitbook.io/toolkit/more/all-tools/china-related-resources"}, {"Name": "Companies House", "Category": "Companies & Finance", "Cost": "Free", "Description": "Search companies and individuals in the United Kingdom and Gibraltar.", "URL": "https://find-and-update.company-information.service.gov.uk/"}, {"Name": "EDGAR", "Category": "Companies & Finance", "Cost": "Free", "Description": "Database of corporate filings for the US", "URL": "https://www.sec.gov/edgar/search/"}, {"Name": "EDGAR Command Line Interface (edgar-tool)", "Category": "Companies & Finance", "Cost": "Free", "Description": "Tool for the retrieval of corporate and financial data from SEC's EDGAR (Electronic Data Gathering, Analysis, and Retrieval) database.", "URL": "https://pypi.org/project/edgar-tool/"}, {"Name": "EU Sanctions Map", "Category": "Companies & Finance", "Cost": "Free", "Description": "Database of sanctions imposed by the European Union", "URL": "https://www.sanctionsmap.eu/"}, {"Name": "EU consolidated corporate registers", "Category": "Companies & Finance", "Cost": "Free", "Description": "Consolidated company registers covering most of the EU, Iceland Liechtenstein and Norway.", "URL": "https://e-justice.europa.eu/content_find_a_company-489-en.do"}, {"Name": "Etherscan", "Category": "Companies & Finance", "Cost": "Free", "Description": "An explorer that allows researchers to track wallets, transactions and more on the Ethereum blockchain.", "URL": "https://etherscan.io/"}, {"Name": "Global Suppliers Online", "Category": "Companies & Finance", "Cost": "Partially Free", "Description": "A site dedicated to connect suppliers and buyers of goods from all over the world.", "URL": "https://www.globalsuppliersonline.com/"}, {"Name": "ICIJ Offshore Leaks Database", "Category": "Companies & Finance", "Cost": "Free", "Description": "Find out who\u2019s behind more than 810k offshore companies, foundations and trusts from the Panama Papers, the Offshore Leaks, the Bahamas Leaks and the Paradise Papers investigations.", "URL": "http://offshoreleaks.icij.org/"}, {"Name": "ImportGenius", "Category": "Companies & Finance", "Cost": "Paid", "Description": "Commercial supplier of shipment data for 19 countries.", "URL": "https://www.importgenius.com/"}, {"Name": "ImportYeti", "Category": "Companies & Finance", "Cost": "Free", "Description": "Search 60 million US customs sea shipment records, find company suppliers.", "URL": "https://www.importyeti.com/"}, {"Name": "LittleSis", "Category": "Companies & Finance", "Cost": "Free", "Description": "Connects dots between influential / wealthy individuals in (mostly US) politics and business.", "URL": "https://littlesis.org/database"}, {"Name": "North Data", "Category": "Companies & Finance", "Cost": "Partially Free", "Description": "Search for people and companies in EU corporate and trade registers + visualize relationships", "URL": "https://northdata.com"}, {"Name": "OCCRP Aleph", "Category": "Companies & Finance", "Cost": "Free", "Description": "Aleph offers a way to research sanctions lists, corporate registries, leaks, and more", "URL": "https://aleph.occrp.org/"}, {"Name": "Open Ownership", "Category": "Companies & Finance", "Cost": "Free", "Description": "Links to beneficial ownership registers.", "URL": "https://www.openownership.org/en/"}, {"Name": "OpenCorporates", "Category": "Companies & Finance", "Cost": "Partially Free", "Description": "Comprehensive repository of company registries around the world", "URL": "https://opencorporates.com/"}, {"Name": "OpenSanctions", "Category": "Companies & Finance", "Cost": "Partially Free", "Description": "Open-source international database of sanctions data, persons of interest and politically exposed persons.", "URL": "https://www.opensanctions.org/"}, {"Name": "OpenSecrets", "Category": "Companies & Finance", "Cost": "Free", "Description": "Data on campaign finance, lobbying, and spending in U.S. politics", "URL": "https://www.opensecrets.org/"}, {"Name": "Osint Tools Map", "Category": "Companies & Finance", "Cost": "Free", "Description": "An interactive worldwide map, showcasing business registries, court records, and other publicly available information to aid OSINT investigations and research.", "URL": "https://cybdetective.com/osintmap/"}, {"Name": "RuPEP", "Category": "Companies & Finance", "Cost": "Free", "Description": "Online database of politically exposed persons in Russia, Belarus and Kazakhstan.", "URL": "https://rupep.org/en/"}, {"Name": "SanctionsExplorer", "Category": "Companies & Finance", "Cost": "Free", "Description": "A comprehensive database of current and historical OFAC/UN/EU sanctions", "URL": "https://sanctionsexplorer.org/"}, {"Name": "UN Comtrade Database", "Category": "Companies & Finance", "Cost": "Free", "Description": "United Nations free database of global trade.", "URL": "https://comtradeplus.un.org/"}, {"Name": "Wikipedia list of registers", "Category": "Companies & Finance", "Cost": "Free", "Description": "Wikipedia list of official business registers around the world.", "URL": "https://en.wikipedia.org/wiki/List_of_official_business_registers"}, {"Name": "ACLED (Armed Conflict Location & Event Data Project)", "Category": "Conflict", "Cost": "Free", "Description": "ACLED provides data and analysis on political violence and protest around the world, facilitating research, policy making, and journalistic reporting.", "URL": "https://acleddata.com/"}, {"Name": "Bulletpicker.com", "Category": "Conflict", "Cost": "Free", "Description": "Bulletpicker.com is a collection of ammunition guidebooks and manuals from several different armed forces.", "URL": "https://www.bulletpicker.com/index.html"}, {"Name": "CAT UXO", "Category": "Conflict", "Cost": "Partially Free", "Description": "A repository for professionals working in the explosive ordnance disposal (EOD) space.", "URL": "https://cat-uxo.com/"}, {"Name": "LiveUAMap", "Category": "Conflict", "Cost": "Partially Free", "Description": "LiveUAMap is a mapping tool that provides up-to-date information on global geopolitical events, conflicts, and crises.", "URL": "https://liveuamap.com/"}, {"Name": "Open Source Munitions Portal", "Category": "Conflict", "Cost": "Free", "Description": "A tool for researchers, journalists and practitioners trying to learn more about munitions and their use and impact in conflict.", "URL": "https://osmp.airwars.org/"}, {"Name": "Atlos", "Category": "Data Organization & Analysis", "Cost": "Partially Free", "Description": "ATLOS is a platform for collaborative and large-scale open source investigations.", "URL": "https://www.atlos.org/"}, {"Name": "Blender", "Category": "Data Organization & Analysis", "Cost": "Free", "Description": "Blender is an open-source 3D creation suite supporting the 3D pipeline\u2014modeling, rigging, animation, simulation, rendering, compositing, and motion tracking, even video editing.", "URL": "https://www.blender.org/"}, {"Name": "Datawrapper", "Category": "Data Organization & Analysis", "Cost": "Partially Free", "Description": "A tool for creating interactive charts, maps, and tables from your data, offering a user-friendly interface for visualizing information.", "URL": "https://www.datawrapper.de/"}, {"Name": "Gephi", "Category": "Data Organization & Analysis", "Cost": "Free", "Description": "Open-source network analysis and visualization software", "URL": "https://gephi.org"}, {"Name": "Logseq", "Category": "Data Organization & Analysis", "Cost": "Free", "Description": "Logseq is an open-source knowledge management tool that enables users to organize their notes, tasks, and projects.", "URL": "https://logseq.com/"}, {"Name": "Maltego Graph", "Category": "Data Organization & Analysis", "Cost": "Partially Free", "Description": "Maltego Graph is an investigation platform that combines two things at once: (1) It acts as a search tool, and (2) It creates a graph establishing links between data you uncover from your search.", "URL": "https://www.maltego.com/"}, {"Name": "Obsidian", "Category": "Data Organization & Analysis", "Cost": "Partially Free", "Description": "A knowledge management and note-taking app with extensive customization options.", "URL": "https://obsidian.md/"}, {"Name": "Pinpoint", "Category": "Data Organization & Analysis", "Cost": "Free", "Description": "A tool by Google to catalogue uploaded documents and files, providing OCR, indexing, and other services. Full access only granted to journalists, academic researchers and university students.", "URL": "https://journaliststudio.google.com/pinpoint/about"}, {"Name": "QGIS", "Category": "Data Organization & Analysis", "Cost": "Free", "Description": "QGIS is a free Open Source Geographic Information System (GIS).", "URL": "https://www.qgis.org"}, {"Name": "RAWGraphs", "Category": "Data Organization & Analysis", "Cost": "Free", "Description": "RAWGraphs is an open-source data visualization tool designed for non-technical users, enabling the creation of customizable, editable charts without coding skills.", "URL": "https://app.rawgraphs.io/"}, {"Name": "Time.Graphics", "Category": "Data Organization & Analysis", "Cost": "Partially Free", "Description": "A tool for creating, visualizing, and managing timelines online.", "URL": "https://time.graphics"}, {"Name": "AllTrails", "Category": "Environment & Wildlife", "Cost": "Partially Free", "Description": "AllTrails.com is a tool for discovering hiking, biking, and running trails worldwide, providing detailed trail maps, user reviews, and navigation support for outdoor enthusiasts.", "URL": "https://www.alltrails.com/"}, {"Name": "Amazonia Socio Ambiental", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "Amazon rainforest maps and shapefiles of natural protected areas, concessions, indigenous territories, oil, mining, roads, fires, deforestation in bolivia, brazil, colombia, ecuador, guyanas and suriname, peru, venezuela", "URL": "https://www.amazoniasocioambiental.org/en/"}, {"Name": "Aquaduct Water Risk Atlas", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "Water and drought risks mapped, globally.", "URL": "https://wri.org/applications/aqueduct/water-risk-atlas/#/?advanced=false\\&basemap=hydro\\&indicator=bwd\\_cat\\&lat=40.979898069620155\\&lng=13.293457031250002\\&mapMode=view\\&month=1\\&opacity=0.5\\&ponderation=DEF\\&predefined=false\\&projection=absolute\\&scenario=optimistic\\&scope=baseline\\&timeScale=annual\\&year=baseline\\&zoom=5"}, {"Name": "BirdNet", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "Identify bird sounds - find bird sounds on a global map.", "URL": "https://birdnet.cornell.edu/map"}, {"Name": "CITES Trade Database", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "Around 23 million records of trade in wildlife since 1975.", "URL": "https://trade.cites.org/"}, {"Name": "CryO Tools", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "Scientific tools for investigating the cryosphere (areas with snow & ice)", "URL": "https://cryo-tools.org/"}, {"Name": "EIA Global Environmental Crime tracker", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "Map/tracking of environmental crimes including trade in ivory, rhino, big cats, and other exotic animals.", "URL": "https://eia-international.org/global-environmental-crime-tracker/"}, {"Name": "Environmental Justice Atlas", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "Map of environmental-related conflict globally", "URL": "https://ejatlas.org/"}, {"Name": "Global Fishing Watch Map", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "The Global Fishing Watch Map is a digital platform for investigating fishing activities worldwide by utilising satellite and AIS data.", "URL": "https://globalfishingwatch.org/map"}, {"Name": "Global Forest Watch", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "It helps to detect changes in forest cover (i.e., to track deforestation), fires, land use, and more. It also includes Global Fire Watch (VIRSS data)", "URL": "https://www.globalforestwatch.org/"}, {"Name": "Global Monitoring System - ECOSOLVE", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "Illicit online wildlife markets data from Brazil, South Africa and Thailand.", "URL": "https://www.ecosolve.eco/dashboard"}, {"Name": "Google Flood Hub", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "A visual tool to monitor river levels and forecast floods based on AI models developed by Google Research.", "URL": "https://sites.research.google/floods/"}, {"Name": "Locust Hub (FAO)", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "A map visualizing locust movements globally", "URL": "https://locust-hub-hqfao.hub.arcgis.com/"}, {"Name": "Merlin", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "Identify birds (visually), through an app.", "URL": "https://merlin.allaboutbirds.org/"}, {"Name": "Movebank", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "Platform for animal tracking data.", "URL": "https://www.movebank.org/"}, {"Name": "Nullschool Earth Map", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "View current and historic wind, weather, ocean and pollution conditions on an interactive animated map.", "URL": "https://earth.nullschool.net/#current"}, {"Name": "Resource Watch", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "A nonprofit platform, still in beta, that provides hundreds of data sets on the state of the planet\u2019s resources and citizens. It is sponsored by the World Resources Institute and other organizations.", "URL": "https://resourcewatch.org/data/explore"}, {"Name": "River Runner Global", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "Calculate which water stream a drop of rain will follow", "URL": "https://river-runner-global.samlearner.com/"}, {"Name": "UNOSAT Analyses", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "UNOSAT Analyses is a tool that maps humanitarian emergencies across the globe utilising United Nations Satellite Centre data.", "URL": "https://unosat.org/products"}, {"Name": "WildEye", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "Tracking tool for data on environmental and wildlife crime cases, including court cases and convictions, across the globe.", "URL": "https://global.wildeye.oxpeckers.org/"}, {"Name": "WildMe & WildBook", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "Open source pattern recognition software to identify unique whales, sharks, zebras, jaguars, skunks, fish and much more.", "URL": "https://wildme.org/#/platforms/bass"}, {"Name": "Wildlife Trade Portal", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "An open-source tool to search wildlife seizure data worldwide.", "URL": "https://www.wildlifetradeportal.org/"}, {"Name": "World Database Protected Areas", "Category": "Environment & Wildlife", "Cost": "Free", "Description": "The most comprehensive global database on terrestrial and marine protected areas.", "URL": "https://www.protectedplanet.net/en/thematic-areas/wdpa?tab=WDPA"}, {"Name": "Facebook Video Downloader", "Category": "Facebook", "Cost": "Free", "Description": "Handy website to download public Facebook videos. Copy paste the URL of the video and download it in the available definition formats.", "URL": "http://fdown.net/"}, {"Name": "HaveIBeenZuckered", "Category": "Facebook", "Cost": "Free", "Description": "Check if a telephone number is present within the Facebook data breach.", "URL": "https://haveibeenzuckered.com/"}, {"Name": "Meta Content Library", "Category": "Facebook", "Cost": "Free", "Description": "Meta Content Library is a controlled-access tool that lets approved academic and non-profit researchers search the full public archive of Facebook, Instagram, and Threads posts, in near-real-time.", "URL": "https://transparency.meta.com/researchtools/meta-content-library"}, {"Name": "Sowdust FB search", "Category": "Facebook", "Cost": "Free", "Description": "[graph.tips/beta](http://graph.tips/beta) This page tries to be a simple interface to show how the current Facebook search function works, after Graph search was closed.", "URL": "http://sowsearch.info"}, {"Name": "Who posted what?", "Category": "Facebook", "Cost": "Free", "Description": "A tool that allows a keyword search on Facebook on a specific date or within a specific time frame.", "URL": "https://whopostedwhat.com/"}, {"Name": "Amazon Rekognition", "Category": "Facial Recognition", "Cost": "Free", "Description": "Check how similar two faces are", "URL": "https://aws.amazon.com/rekognition/"}, {"Name": "Azure AI Video Indexer", "Category": "Facial Recognition", "Cost": "Paid", "Description": "AI video tool for facial detection and other types of insights.", "URL": "https://vi.microsoft.com/en-us"}, {"Name": "FaceCheck.ID", "Category": "Facial Recognition", "Cost": "Paid", "Description": "A facial recognition search engine that tries to find photos of people that look similar to a person of interest.", "URL": "https://facecheck.id/"}, {"Name": "GFPGAN", "Category": "Facial Recognition", "Cost": "Free", "Description": "Practical face restoration algorithm for *old photos* or *AI-generated faces*", "URL": "https://replicate.com/tencentarc/gfpgan"}, {"Name": "PimEyes", "Category": "Facial Recognition", "Cost": "Paid", "Description": "An AI-powered facial recognition reverse image search tool.", "URL": "https://pimeyes.com/en"}, {"Name": "Search4Faces", "Category": "Facial Recognition", "Cost": "Free", "Description": "Upload the picture of a face and find pictures of similar looking people on VKontakte, Odnoklassniki, TikTok and Clubhouse.", "URL": "https://search4faces.com"}, {"Name": "VFF", "Category": "Facial Recognition", "Cost": "Free", "Description": "VGG Face Finder (VFF) Engine  Visual Geometry Group and released under the BSD-2 clause. VFF is a web application that serves as a web engine to perform searches for faces over an user-defined image dataset. It is based on the original application created by VGG to perform visual searchers over a large dataset of images from BBC News.", "URL": "https://www.robots.ox.ac.uk/~vgg/software/vff/"}, {"Name": "Bellingcat OpenStreetMap Search", "Category": "Geolocation", "Cost": "Free", "Description": "A user interface to search OpenStreetMap data for features in proximity to each other.", "URL": "https://osm-search.bellingcat.com/"}, {"Name": "GeoHints", "Category": "Geolocation", "Cost": "Free", "Description": "GeoHints is a website that provides information about things like traffic lights, utility poles, bollards etc. for different regions of the world to help geolocate a location.", "URL": "https://geohints.com/"}, {"Name": "GeoNames", "Category": "Geolocation", "Cost": "Free", "Description": "The GeoNames geographical database covers all countries and contains over eleven million place names that are available for download free of charge Extremely useful in Geo Tagging, documentation, and data collection.", "URL": "http://www.geonames.org/"}, {"Name": "Geolocation Estimation", "Category": "Geolocation", "Cost": "Partially Free", "Description": "A geolocation tool using a deep-learning model to predict the location of an image.", "URL": "https://labs.tib.eu/geoestimation/"}, {"Name": "License Plate Maps", "Category": "Geolocation", "Cost": "Free", "Description": "Collection of tools and maps for discerning license plates by country", "URL": "https://bellingcat.gitbook.io/toolkit/more/all-tools/license-plate-maps"}, {"Name": "MW Geofind", "Category": "Geolocation", "Cost": "Free", "Description": "MW Geofind is a tool designed to help users identify the filming location of YouTube videos, facilitating the exploration of global content from a geographical perspective.", "URL": "https://mattw.io/youtube-geofind/location"}, {"Name": "Photo-Map.RU", "Category": "Geolocation", "Cost": "Free", "Description": "Geotagged VK posts.", "URL": "http://photo-map.ru/"}, {"Name": "ShadeMap", "Category": "Geolocation", "Cost": "Partially Free", "Description": "ShadeMap is a global simulation of mountain, building & tree shadows for a given date & time. Base data is free, but users can buy 30cm accurate data per sq km for areas of special focus.", "URL": "https://shademap.app"}, {"Name": "Shadow Finder", "Category": "Geolocation", "Cost": "Free", "Description": "To analyse shadows in source imagery, Shadow Finder maps all points on the earth where a shadow of given length could occur at a given date & time, IF the height of the object casting it is known.", "URL": "https://colab.research.google.com/github/Bellingcat/ShadowFinder/blob/main/ShadowFinderColab.ipynb"}, {"Name": "ShadowMap", "Category": "Geolocation", "Cost": "Free", "Description": "Global map of 3D buildlings and the shadows they cast at a specific time a day", "URL": "https://app.shadowmap.org/"}, {"Name": "SunCalc", "Category": "Geolocation", "Cost": "Free", "Description": "Suncalc models the relationship between the date, time of day, the geographic location of a place, and the position of the sun in the sky, together with the length & direction of the shadows it casts.", "URL": "https://www.suncalc.org"}, {"Name": "Bellingcat Insta Location Search", "Category": "Instagram", "Cost": "Free", "Description": "Finds Instagram location IDs near a specified latitude and longitude", "URL": "https://github.com/bellingcat/instagram-location-search"}, {"Name": "InstaLoader", "Category": "Instagram", "Cost": "Free", "Description": "Download pictures (or videos) along with their captions and other metadata from Instagram.", "URL": "https://instaloader.github.io"}, {"Name": "Instagram Location Search", "Category": "Instagram", "Cost": "Free", "Description": "A command line tool that allows users to find location tags near a specified latitude and longitude.", "URL": "https://github.com/bellingcat/instagram-location-search/tree/main"}, {"Name": "Picuki", "Category": "Instagram", "Cost": "Free", "Description": "Picuki is an online tool that makes it possible to view and download Instagram public content without the need of being logged in.", "URL": "https://www.picuki.com/"}, {"Name": "Story Saver", "Category": "Instagram", "Cost": "Free", "Description": "Download public Instagram Stories, Highlights and Videos.", "URL": "https://storysaver.net"}, {"Name": "About Maps and Satellites", "Category": "Maps", "Cost": "Free", "Description": "A guide to using map and satellite tools.", "URL": "https://bellingcat.gitbook.io/toolkit/more/all-tools/about-maps-and-satellites"}, {"Name": "Apple Maps", "Category": "Maps", "Cost": "Free", "Description": "Apple Maps is a digital mapping service with detailed, interactive maps, satellite imagery, and location-based information.", "URL": "https://www.apple.com/maps/"}, {"Name": "Baidu Maps", "Category": "Maps", "Cost": "Free", "Description": "Baidu\u2019s mapping service offering satellite imagery, street maps, and streetview (\u201cPanorama\u201d - zh:\u767e\u5ea6\u5168\u666f).", "URL": "http://map.baidu.com/"}, {"Name": "Bing Maps", "Category": "Maps", "Cost": "Partially Free", "Description": "Bing Maps is a web mapping service provided by Microsoft that offers detailed geographical information and tools for route planning, location search, and satellite imagery.", "URL": "https://www.bing.com/maps/"}, {"Name": "Convert Geographic Units", "Category": "Maps", "Cost": "Free", "Description": "A tool that converts various geographic coordinates to support diverse mapping and spatial analysis needs.", "URL": "http://rcn.montana.edu/resources/Converter.aspx"}, {"Name": "Cyclone Map", "Category": "Maps", "Cost": "Free", "Description": "Click on the hurricane on the map and get detailed information about it.", "URL": "https://cyclocane.com/"}, {"Name": "F4Map", "Category": "Maps", "Cost": "Free", "Description": "F4Map is an interactive 3D map visualization tool that provides detailed rendering of urban landscapes and geographical features.", "URL": "https://demo.f4map.com"}, {"Name": "Gaode Maps", "Category": "Maps", "Cost": "Free", "Description": "Gaode Maps (also known as AMap) is a mapping application and technology from the Chinese company Alibaba.", "URL": "https://gaode.com"}, {"Name": "Geodesics on Earth", "Category": "Maps", "Cost": "Free", "Description": "Finding the shortest path between two points.", "URL": "https://academo.org/demos/geodesics/"}, {"Name": "Gjirafa", "Category": "Maps", "Cost": "Free", "Description": "Mapping service for Albania (specially Kosovo)", "URL": "https://gjirafa.biz/"}, {"Name": "Global Fishing Map", "Category": "Maps", "Cost": "Free", "Description": "Click on a point on the map and get the data on the current fishing effort at that location.", "URL": "https://globalfishingwatch.org/map/"}, {"Name": "Global Wetlands Map", "Category": "Maps", "Cost": "Free", "Description": "Interactive map of open waters, mangroves, swamps, fens, riverines, floodswamps, marshs, wet meadows and floodplains", "URL": "https://www2.cifor.org/global-wetlands/"}, {"Name": "Google Earth Pro", "Category": "Maps", "Cost": "Free", "Description": "Google Earth is a geospatial tool that provides detailed, global satellite imagery, maps, 3D terrain models, and the ability to explore geographic data interactively.", "URL": "https://www.google.com/earth/about/versions/"}, {"Name": "Google Maps", "Category": "Maps", "Cost": "Free", "Description": "Google Maps provides mapping information, satellite imagery and Google Street View imagery including historical Street View images.", "URL": "https://www.google.com/maps"}, {"Name": "GovMap", "Category": "Maps", "Cost": "Free", "Description": "GovMap provides an interactive map of Israel, offering users a wide range of data including property boundaries, planning information, and infrastructure details.", "URL": "https://www.govmap.gov.il/"}, {"Name": "Historical Weather Map", "Category": "Maps", "Cost": "Free", "Description": "Weather history data", "URL": "https://www.wunderground.com/history"}, {"Name": "Hitta.se", "Category": "Maps", "Cost": "Free", "Description": "Mapping service for Sweden", "URL": "https://www.hitta.se/"}, {"Name": "KartaView", "Category": "Maps", "Cost": "Free", "Description": "KartaView is a crowdsourced, street-level imagery platform that allows users to contribute, view, and use photos to enhance and validate map data.", "URL": "https://kartaview.org/map"}, {"Name": "Light Pollution World Map", "Category": "Maps", "Cost": "Free", "Description": "Shows current and past views of light pollution. Can track over time. ", "URL": "https://www.lightpollutionmap.info/"}, {"Name": "Lightning Maps", "Category": "Maps", "Cost": "Free", "Description": "Lightning strikes in real time and also data on past storms", "URL": "https://www.lightningmaps.org/#m=oss;t=3;s=0;o=0;b=;ts=0;"}, {"Name": "MapChecking", "Category": "Maps", "Cost": "Free", "Description": "This tool helps you estimate and fact-check the maximum number of people standing in a given area.", "URL": "https://www.mapchecking.com/"}, {"Name": "MapSwitcher", "Category": "Maps", "Cost": "Free", "Description": "Chrome extension switches  between online map apps, maintaining (as far as possible) the map centre, zoom level, & directions of the source map.", "URL": "https://github.com/david-r-edgar/MapSwitcher"}, {"Name": "MapView", "Category": "Maps", "Cost": "Free", "Description": "Maps from NGMDB (USGS/AASG)", "URL": "https://ngmdb.usgs.gov/mapview/?center=-97,39.6&zoom=4"}, {"Name": "Mapillary", "Category": "Maps", "Cost": "Partially Free", "Description": "Mapillary is a crowdsourced street-level imagery platform.", "URL": "https://www.mapillary.com/"}, {"Name": "Maritime Awareness Project", "Category": "Maps", "Cost": "Free", "Description": "South China Sea maps with oil and gas fields, fishing areas, air defense zones and administrative, claimed, disputed zones, submarine data cables.", "URL": "https://map.nbr.org/interactivemap/"}, {"Name": "MeteoBlue", "Category": "Maps", "Cost": "Free", "Description": "Weather data and statistics. Click on the hurricane on the map and get detailed information about it.", "URL": "https://cyclocane.com/"}, {"Name": "Mineral Map", "Category": "Maps", "Cost": "Free", "Description": "Maps of mineral deposits for different countries.", "URL": "https://www.mindat.org/countrylist.php"}, {"Name": "NASA FIRMS", "Category": "Maps", "Cost": "Free", "Description": "Displays a world map overlaid with infra-red data from one or more satellites, some, but not all of which may represent heat from fires and explosions.", "URL": "https://firms2.modaps.eosdis.nasa.gov/map/"}, {"Name": "NASA Fire Map", "Category": "Maps", "Cost": "Free", "Description": "Map of fire hotspots around the world (data from VIIRS and MODIS satellites, last 24 hours)", "URL": "https://firms.modaps.eosdis.nasa.gov/map/"}, {"Name": "Natural Hazards Viewer (worldwide)", "Category": "Maps", "Cost": "Free", "Description": "Post-event natural hazards data collection", "URL": "https://www.ncei.noaa.gov/maps/hazards/"}, {"Name": "OpenInfraMap", "Category": "Maps", "Cost": "Free", "Description": "Power lines, telecoms, solar, oil, gas & water infrastructure mapped globally.", "URL": "https://openinframap.org/#2/26/12"}, {"Name": "OpenSeaMap", "Category": "Maps", "Cost": "Free", "Description": "Sea map of borders, special zones, shipping lanes, with overlays of MarineTraffic and other sources", "URL": "https://map.openseamap.org/"}, {"Name": "OpenStreetMap", "Category": "Maps", "Cost": "Free", "Description": "OpenStreetMap is a collaborative project to create a free editable map of the world.", "URL": "http://openstreetmap.org/"}, {"Name": "Overpass Turbo", "Category": "Maps", "Cost": "Free", "Description": "Overpass Turbo is a web-based tool for querying and visualizing OpenStreetMap crowd sourced data, aiding in extracting specific information like locations of amenities e.g.hospitals.", "URL": "https://overpass-turbo.eu/"}, {"Name": "PeakVisor", "Category": "Maps", "Cost": "Free", "Description": "Dual window views for any global location: (1) a 2-D map & (2) a 3-D rendered terrain model, with photo fitting, shade/slope mapping, sun trails & weather data. In active development for OS research.", "URL": "https://peakvisor.com"}, {"Name": "Quick geolocation search", "Category": "Maps", "Cost": "Free", "Description": "A tool that brings several maps into one place for easy location search.", "URL": "https://cybdetective.com/quickgeolocationsearch.html"}, {"Name": "Shark Tracker", "Category": "Maps", "Cost": "Free", "Description": "Click on a shark on the world map and find out its name, size and travel log.", "URL": "https://www.ocearch.org/tracker/"}, {"Name": "Soar.earth", "Category": "Maps", "Cost": "Free", "Description": "Big collection satellite, drone and ecological maps", "URL": "https://soar.earth/"}, {"Name": "Strava", "Category": "Maps", "Cost": "Partially Free", "Description": "Social media fitness app with exercise map based on users' GPS data.", "URL": "https://www.strava.com"}, {"Name": "Surging Seas Risk Zone Map", "Category": "Maps", "Cost": "Free", "Description": "Map of points where there is a risk of significant sea level rise in the event of melting glaciers.", "URL": "https://ss2.climatecentral.org/#12/40.7298/-74.0070?show=satellite&projections=0-K14_RCP85-SLR&level=5&unit=feet&pois=hide"}, {"Name": "Tencent Maps", "Category": "Maps", "Cost": "Free", "Description": "Tencent Maps (formerly SOSO Maps) is a desktop and web mapping service application and technology provided by Chinese company Tencent, offering satellite imagery, street maps, street view (coverage) and historical view perspectives.", "URL": "http://map.qq.com/"}, {"Name": "Topotijdreis.nl", "Category": "Maps", "Cost": "Free", "Description": "Over 200 years of maps and topography from the Netherlands.", "URL": "http://topotijdreis.nl"}, {"Name": "USA Fishermap", "Category": "Maps", "Cost": "Free", "Description": "Map of specific ocean depths for areas selected.", "URL": "https://usa.fishermap.org/depth-map/"}, {"Name": "UTM grid zones", "Category": "Maps", "Cost": "Free", "Description": "An overview of the Universal Transverse Mercator coordinate system.", "URL": "http://dmap.co.uk/utmworld.htm"}, {"Name": "WAQI", "Category": "Maps", "Cost": "Free", "Description": "World's Air Pollution: Real-time Air Quality Index map", "URL": "http://waqi.info/"}, {"Name": "Weather Map", "Category": "Maps", "Cost": "Free", "Description": "Collection of data on wind, rain, temperature, air pressure, humidity, waves etc", "URL": "https://www.ventusky.com/"}, {"Name": "Wikimapia", "Category": "Maps", "Cost": "Free", "Description": "Wikimapia is a collaborative mapping project that aims to describe every location on Earth, combining the interactive features of a detailed map with the versatility of a wiki system.", "URL": "https://wikimapia.org/"}, {"Name": "Yandex Maps", "Category": "Maps", "Cost": "Partially Free", "Description": "A platform offering detailed maps, satellite imagery, street views (static & sometimes dynamic imagery, including aerial views). Often the best available data on Russia & surrounding regions.", "URL": "https://yandex.com/maps/"}, {"Name": "Zoom Earth", "Category": "Maps", "Cost": "Free", "Description": "Worldwide map of rains, storms, fires, heats, winds and others natural phenomenas", "URL": "https://zoom.earth/"}, {"Name": "mapy.cz", "Category": "Maps", "Cost": "Free", "Description": "Mapping service for Czechia", "URL": "http://mapy.cz"}, {"Name": "satellites.pro", "Category": "Maps", "Cost": "Free", "Description": "Satellites.pro allows open source researchers to quickly switch between several free satellite imagery and mapping services.", "URL": "https://satellites.pro/"}, {"Name": "what3words", "Category": "Maps", "Cost": "Free", "Description": "A proprietary geocode system which identifies any location on the surface of the earth to a resolution of 3 metres. The identifier is a unique combination of three words, available in 60 languagues.", "URL": "http://what3words.com/"}, {"Name": "ExifPurge", "Category": "Metadata", "Cost": "Free", "Description": "EXIF Purge is a small portable application to remove EXIF metadata from multiple images at once. With the click of a button you can remove the camera, location and other technical information from a batch of photos which is embedded by the camera or the photo editing software.", "URL": "http://www.exifpurge.com/"}, {"Name": "FotoForensics", "Category": "Metadata", "Cost": "Free", "Description": "Image forensics tool.", "URL": "http://fotoforensics.com/"}, {"Name": "Irfanview", "Category": "Metadata", "Cost": "Free", "Description": "Windows-based software to extract metadata.", "URL": "http://irfanview.com/"}, {"Name": "Jimpl", "Category": "Metadata", "Cost": "Free", "Description": "Online EXIF data viewer", "URL": "https://jimpl.com/"}, {"Name": "Reveal Image Verification Assistant", "Category": "Metadata", "Cost": "Free", "Description": "Forensic providing eight filters to detect still images alterations. Web-based image tool. Also available within InVID verification plugin.\"\"", "URL": "https://www.rand.org/research/projects/truth-decay/fighting-disinformation/search/items/reveal-image-verification-assistant.html"}, {"Name": "jhead", "Category": "Metadata", "Cost": "Free", "Description": "Remove EXIF/metadata.", "URL": "https://www.sentex.ca/~mwandel/jhead/"}, {"Name": "metadata2go", "Category": "Metadata", "Cost": "Free", "Description": "Check metadata for both photos and videos online.", "URL": "https://www.metadata2go.com/"}, {"Name": "xIFr", "Category": "Metadata", "Cost": "Free", "Description": "A Firefox add-on for extracting EXIF metadata by right-clicking an image.", "URL": "https://github.com/StigNygaard/xIFr"}, {"Name": "AmIReal", "Category": "Misc", "Cost": "Free", "Description": "Github - GAN detector detects if faces were generated by ThisPersonDoesNotExist", "URL": "https://seintpl.github.io/AmIReal/"}, {"Name": "AutoStitch", "Category": "Misc", "Cost": "Free", "Description": "Autostitch is a free tool for seamlessly combining multiple photos into a single panoramic image, making it ideal for creating wide-angle photography without needing specialized equipment.", "URL": "https://mattabrown.github.io/autostitch.html"}, {"Name": "Cleanup.Pictures", "Category": "Misc", "Cost": "Free", "Description": "Web tool for quickly removing objects from an image.", "URL": "https://cleanup.pictures/"}, {"Name": "Forensically", "Category": "Misc", "Cost": "Free", "Description": "A collection of web-based image forensics tools. Can identify fake or doctored images.", "URL": "https://29a.ch/photo-forensics/#forensic-magnifier"}, {"Name": "Hugin", "Category": "Misc", "Cost": "Free", "Description": "Hugin is a free and open-source panorama photo stitching and HDR (High Dynamic Range imaging) merging software that helps users create seamless panoramic images from multiple photographs.", "URL": "https://hugin.sourceforge.io/"}, {"Name": "IPVM Calculator", "Category": "Misc", "Cost": "Free", "Description": "Tool for simulating camera views (for geolocations).", "URL": "https://calculator.ipvm.com/"}, {"Name": "InVID Verification Plugin", "Category": "Misc", "Cost": "Free", "Description": "A toolkit that supports the verification of videos and images.", "URL": "https://weverify.eu/verification-plugin/"}, {"Name": "PixPlot", "Category": "Misc", "Cost": "Free", "Description": "PixPlot is a tool that utilizes machine learning and WebGL to provide an interactive visualization of large image collections, allowing users to explore patterns and outliers within image datasets.", "URL": "https://github.com/YaleDHLab/pix-plot"}, {"Name": "PureRef", "Category": "Misc", "Cost": "Free", "Description": "Image workspace; lets you arrange images in groups, organize them, etc.", "URL": "https://www.pureref.com/index.php"}, {"Name": "VIC", "Category": "Misc", "Cost": "Free", "Description": "The VGG Image Classification (VIC) Engine is an open source project developed at the Visual Geometry Group and released under the BSD-2 clause. VIC is a web application that serves as a web engine to perform image classification queries over an user-defined image dataset. It is based on the original application created by VGG to perform visual searchers over a large dataset of images from BBC News.", "URL": "http://www.robots.ox.ac.uk/~vgg/software/vic/"}, {"Name": "fdupes", "Category": "Misc", "Cost": "Free", "Description": "Github - Locating exact matches of duplicate files.", "URL": "https://github.com/adrianlopezroche/fdupes"}, {"Name": "kargoteka", "Category": "Misc", "Cost": "Unknown", "Description": "Photo gallery of Russian freight and special vehicles (great to piggyback off of PlatesMania)", "URL": "http://kargoteka.info/extended_search.php"}, {"Name": "Open Measures", "Category": "Multiple Platforms", "Cost": "Partially Free", "Description": "Open Measures helps open source researchers investigate harmful online activity such as extremism and disinformation.", "URL": "https://public.openmeasures.io"}, {"Name": "Social-searcher", "Category": "Multiple Platforms", "Cost": "Partially Free", "Description": "Search hashtags and usernames across various platforms.", "URL": "https://www.social-searcher.com/"}, {"Name": "holehe", "Category": "Multiple Platforms", "Cost": "Free", "Description": "holehe allows you to check if the mail is used on different sites like twitter, instagram and will retrieve information on sites with the forgotten password function.", "URL": "https://github.com/megadose/holehe"}, {"Name": "4plebs", "Category": "Other Platforms", "Cost": "Free", "Description": "Searchable archive of specific 4chan boards. Makes it possible to read threads after they are purged from 4chan.", "URL": "https://4plebs.org/"}, {"Name": "Bluesky Insights", "Category": "Other Platforms", "Cost": "Free", "Description": "Bluesky Insights is a free web-based analytics tool for the Bluesky social network.", "URL": "https://bskyinsights.com"}, {"Name": "BskyFollowFinder/Bluesky network analyzer", "Category": "Other Platforms", "Cost": "Free", "Description": "A tool that identifies which Bluesky accounts are followed by a profile\u2019s contacts but not by that profile. Can be used for expanding networks and social graph analysis.", "URL": "https://bsky-follow-finder.theo.io/"}, {"Name": "BskyThreadReader", "Category": "Other Platforms", "Cost": "Free", "Description": "BskyThreadReader is a web-based Bluesky thread viewer that allows anyone to read and share Bluesky threads without logging in.", "URL": "https://bskythreadreader.glitch.me/"}, {"Name": "ClubhouseDB", "Category": "Other Platforms", "Cost": "Free", "Description": "Search users, number of followers/following, and date of registry", "URL": "https://clubhousedb.com/"}, {"Name": "Disboard", "Category": "Other Platforms", "Cost": "Free", "Description": "Search for public discord servers", "URL": "https://disboard.org/servers"}, {"Name": "Email to LinkedIn (Epieos)", "Category": "Other Platforms", "Cost": "Free", "Description": "Check if an email address is connected to a LinkedIn Profile", "URL": "https://tools.epieos.com/linkedin.php"}, {"Name": "F5Bot", "Category": "Other Platforms", "Cost": "Free", "Description": "Sends you an email when a keyword is mentioned on Reddit.", "URL": "https://f5bot.com/"}, {"Name": "FindClone", "Category": "Other Platforms", "Cost": "Free", "Description": "Searches images from VK profiles (within certain limits)", "URL": "https://findclone.ru/"}, {"Name": "Google Account Finder (EPIEOS)", "Category": "Other Platforms", "Cost": "Free", "Description": "Find the profile picture and public Google Map Reviews + Photos associated with a G-mail adress. Also checks for phone numbers, and checks for email addresses on social networks", "URL": "https://tools.epieos.com/google-account.php"}, {"Name": "Gravatar Email Checker", "Category": "Other Platforms", "Cost": "Free", "Description": "Check if an email address has been used to comment on blogs and whether there is a profile image attached.", "URL": "https://en.gravatar.com/site/check/"}, {"Name": "NameMC", "Category": "Other Platforms", "Cost": "Free", "Description": "Find usernames, track username changes on minecraft", "URL": "https://namemc.com/"}, {"Name": "PSNprofiles", "Category": "Other Platforms", "Cost": "Free", "Description": "Search PlayStation username, see daily activity, games played, country, and profile pic", "URL": "https://psnprofiles.com/"}, {"Name": "Parler Video Uploads Map", "Category": "Other Platforms", "Cost": "Free", "Description": "A map showing the approximate (100ft) location of where Parler videos have been uploaded.", "URL": "https://kylemcdonald.net/parler/map/"}, {"Name": "Redective", "Category": "Other Platforms", "Cost": "Free", "Description": "Analyse Reddit profiles - incl word frequency and active hours", "URL": "https://www.redective.com/"}, {"Name": "Snap Map", "Category": "Other Platforms", "Cost": "Free", "Description": "Searchable map of geotagged snaps.", "URL": "http://map.snapchat.com/"}, {"Name": "SteamId.uk", "Category": "Other Platforms", "Cost": "Partially Free", "Description": " Lookup player names, view (more) previously used names, and when accounts befriended eachother (Free). View screenshots of account, (bulk) seach based on previously used names (paid). ", "URL": "http://steamid.uk/"}, {"Name": "Vk.watch", "Category": "Other Platforms", "Cost": "Free", "Description": "See public comments left by an account, profile photos used, and very basic facial recognition", "URL": "http://vk.watch/"}, {"Name": "XboxGamertag", "Category": "Other Platforms", "Cost": "Free", "Description": "Search gamertags, see games played and recorded game clips", "URL": "https://xboxgamertag.com/"}, {"Name": "192.com", "Category": "People", "Cost": "Free", "Description": "Searching for someone's address in the UK, phone number and who they live with according to electoral rolls.", "URL": "http://www.192.com/"}, {"Name": "Bellingcat Name Variant Search", "Category": "People", "Cost": "Free", "Description": "Simple tool to help search for different ways of writing a name.", "URL": "https://bellingcat.github.io/name-variant-search/"}, {"Name": "Blackbird", "Category": "People", "Cost": "Free", "Description": "Check usernames and email addresses on websites and social networks", "URL": "https://github.com/p1ngul1n0/blackbird"}, {"Name": "DeHashed", "Category": "People", "Cost": "Paid", "Description": "A platform that maintains a database of compromised credentials, with a newly-launched web domain registration search tool.", "URL": "https://bellingcat.gitbook.io/toolkit/more/all-tools/dehashed"}, {"Name": "DiscordLeaks", "Category": "People", "Cost": "Free", "Description": "Search hundreds of thousands of messages leaked from 180+ white-supremacist / nazi discord servers.", "URL": "https://discordleaks.unicornriot.ninja/discord/server/"}, {"Name": "Eniro", "Category": "People", "Cost": "Free", "Description": "Yellow Pages (Swedish Edition)", "URL": "https://www.eniro.se/"}, {"Name": "Epieos", "Category": "People", "Cost": "Paid", "Description": "Checks where an email has been used. Based on Holehe.", "URL": "https://tools.epieos.com/holehe.php"}, {"Name": "FastPeopleSearch", "Category": "People", "Cost": "Free", "Description": "Mostly good for US.", "URL": "http://fastpeoplesearch.com/"}, {"Name": "GetContact", "Category": "People", "Cost": "Free", "Description": "Phonenumber ID app - draws from crowdsourced contactbooks", "URL": "https://www.getcontact.com/en/"}, {"Name": "Ghunt", "Category": "People", "Cost": "Free", "Description": "A command line tool for obtaining information about Google accounts.", "URL": "https://github.com/mxrch/GHunt"}, {"Name": "Have I Been Pwned?", "Category": "People", "Cost": "Free", "Description": "Does an email or a phone number appear in data breaches?", "URL": "https://haveibeenpwned.com/"}, {"Name": "Intelx.io", "Category": "People", "Cost": "Partially Free", "Description": "Find user details in data breaches", "URL": "http://intelx.io/"}, {"Name": "Leak-Lookup", "Category": "People", "Cost": "Partially Free", "Description": "An online tool that allows you to search across public data breaches to surface credentials that may have been compromised.", "URL": "https://leak-lookup.com/"}, {"Name": "Maigret", "Category": "People", "Cost": "Free", "Description": "Maigret is a Python script that retrieves user information by searching for usernames across various websites and social media platforms.", "URL": "https://github.com/soxoj/maigret"}, {"Name": "Namechk", "Category": "People", "Cost": "Free", "Description": "A username and domain search tool that checks on which platforms or domain a given username is registered.", "URL": "https://namechk.com/"}, {"Name": "NeutrOSINT", "Category": "People", "Cost": "Free", "Description": "A tool for investigating Proton Mail addresses.", "URL": "https://github.com/Kr0wZ/NeutrOSINT"}, {"Name": "NigeriaPhonebook", "Category": "People", "Cost": "Free", "Description": "Look up by name, state, and phone number. Last names are partially censored for free accounts.", "URL": "https://nigeriaphonebook.com/"}, {"Name": "Person Lookup", "Category": "People", "Cost": "Free", "Description": "find individuals, phonenumbers, and adresses", "URL": "https://personlookup.co.za/"}, {"Name": "Pipl", "Category": "People", "Cost": "Paid", "Description": "Identity information for professionals", "URL": "http://pipl.com/"}, {"Name": "Ratsit", "Category": "People", "Cost": "Free", "Description": "Look up phone numbers/names (Sweden)", "URL": "https://www.ratsit.se/"}, {"Name": "Search Systems", "Category": "People", "Cost": "Free", "Description": "Finding public record information online in over 70,000 databases organized by type and location to help you find property, criminal, court, birth, death, marriage, divorce records, licenses, deeds, mortgages, corporate records, business registration, and many other public record resources.", "URL": "https://publicrecords.searchsystems.net/"}, {"Name": "Sherlock", "Category": "People", "Cost": "Free", "Description": "Check usernames across more than 400 websites and social networks.", "URL": "https://github.com/sherlock-project/sherlock"}, {"Name": "Skopenow", "Category": "People", "Cost": "Paid", "Description": "Social Media Investigations - name, phone, email, username searches", "URL": "https://www.skopenow.com/"}, {"Name": "Spokeo", "Category": "People", "Cost": "Paid", "Description": "People search through email, phone, name", "URL": "http://spokeo.com/"}, {"Name": "Swedish Name Register", "Category": "People", "Cost": "Free", "Description": "Find out how common a name is in Sweden based on census data", "URL": "https://scb.se/hitta-statistik/sverige-i-siffror/namnsok/"}, {"Name": "The Law Pages", "Category": "People", "Cost": "Free", "Description": "Search criminal court case details in the UK, such as sentence, hearing, defendant, etc.", "URL": "https://www.thelawpages.com/court-cases/court-case-search.php?mode=1"}, {"Name": "ThisNumber", "Category": "People", "Cost": "Free", "Description": "An international directory of white pages and yellow pages phone books, and online directory enquiries. It's a free, independent and up-to-date guide to telephone directories on the web.", "URL": "https://sur.ly/o/numberway.com/AA000014"}, {"Name": "TrueCaller", "Category": "People", "Cost": "Partially Free", "Description": "Truecaller is a caller ID app that identifies incoming calls, blocks unwanted numbers and gathers phone numbers and names from contact lists. It also performs reverse phone number search.", "URL": "https://www.truecaller.com/"}, {"Name": "TruffleHog", "Category": "People", "Cost": "Free", "Description": "Find leaked credentials.", "URL": "https://trufflesecurity.com/trufflehog"}, {"Name": "WAtools.io", "Category": "People", "Cost": "Paid", "Description": "Track whatsapp activity, number, profile picture. Check if number is used, download profile pic, check online status.", "URL": "http://watools.io/"}, {"Name": "WhatsMyName", "Category": "People", "Cost": "Free", "Description": "Search for usernames on several hundred platforms", "URL": "https://whatsmyname.app/"}, {"Name": "Worldwide Osint Tools map", "Category": "People", "Cost": "Free", "Description": "Global overview of yellow/white pages, court cases, business registries etc.", "URL": "https://cipher387.github.io/osintmap/"}, {"Name": "Google Lens", "Category": "Reverse Image Search", "Cost": "Free", "Description": "Google Lens is an image recognition tool which can be used to identify locations or objects in photographs.", "URL": "https://lens.google/"}, {"Name": "RootAbout", "Category": "Reverse Image Search", "Cost": "Free", "Description": "Reverse search images on the Internet Archive", "URL": "http://rootabout.com/"}, {"Name": "Search by Image", "Category": "Reverse Image Search", "Cost": "Free", "Description": "A browser extension to reverse search an image on multiple search engines.", "URL": "https://addons.opera.com/extensions/details/search-by-image/"}, {"Name": "TinEye", "Category": "Reverse Image Search", "Cost": "Free", "Description": "TinEye is a search engine that allows the user to search using images (reverse image search).", "URL": "https://tineye.com/"}, {"Name": "VISE", "Category": "Reverse Image Search", "Cost": "Free", "Description": "(VGG Image Search Engine) This standalone application can be used to do a reverse image search on a large collection of images.", "URL": "http://robots.ox.ac.uk/~vgg/software/vise"}, {"Name": "Copernicus Browser (formerly Sentinel Hub Playground, EO Browser)", "Category": "Satellite Imagery", "Cost": "Free", "Description": "A user-friendly platform for visualising Sentinel data, updated every 5-10 days with new imagery. The interface includes a number of features, including built-in indices and a timelapse tool.", "URL": "https://browser.dataspace.copernicus.eu/"}, {"Name": "EOS Landviewer", "Category": "Satellite Imagery", "Cost": "Paid", "Description": "EOS Landviewer provides free services for up to 10 images. More images and analysis are available to journalists at a discount. Contact: Artem Seredyuk artem.seredyuk@eosda.com. EOS is in the process of developing a service provisionally called EOS Media that will be providing free images and analysis of major natural disasters.", "URL": "http://eos.com/landviewer"}, {"Name": "Earth Explorer", "Category": "Satellite Imagery", "Cost": "Unknown", "Description": "Query and order satellite images", "URL": "https://earthexplorer.usgs.gov/"}, {"Name": "Google Earth Engine", "Category": "Satellite Imagery", "Cost": "Partially Free", "Description": "Google Earth Engine is a platform for environmental monitoring and analysis through satellite imagery and geospatial data.", "URL": "https://code.earthengine.google.com/"}, {"Name": "HERE WeGo", "Category": "Satellite Imagery", "Cost": "Free", "Description": "Sattelite imagery tool that can serve as an alternative to Google or Apple Maps.", "URL": "https://wego.here.com/"}, {"Name": "Index Database", "Category": "Satellite Imagery", "Cost": "Free", "Description": "A database of remote sensing indices and satellite imaging sensors", "URL": "https://www.indexdatabase.de/"}, {"Name": "KakaoMap", "Category": "Satellite Imagery", "Cost": "Free", "Description": "Mapping service for South Korea", "URL": "https://map.kakao.com"}, {"Name": "Mapa.sk", "Category": "Satellite Imagery", "Cost": "Free", "Description": "Mapping service for Slovakia", "URL": "http://mapa.sk/"}, {"Name": "Mappy", "Category": "Satellite Imagery", "Cost": "Free", "Description": "Mapping service (and streetview in a couple of French cities \\[double check this!])", "URL": "http://en.mappy.com/"}, {"Name": "NASA Worldview", "Category": "Satellite Imagery", "Cost": "Free", "Description": "NASA Worldview is an online tool for visualizing and downloading near real-time satellite imagery and scientific data of Earth's atmosphere, land, and oceans.", "URL": "https://worldview.earthdata.nasa.gov/"}, {"Name": "OrbTrack", "Category": "Satellite Imagery", "Cost": "Free", "Description": "Predicts & describes the position & path of >10K satellites in Earth orbit, relative to points on the earth's surface input by the user, for 5 days ahead, + International Space Station video feed.", "URL": "https://www.orbtrack.org"}, {"Name": "Planet Labs", "Category": "Satellite Imagery", "Cost": "Partially Free", "Description": "Planet Labs PBC is an American optical satellite imagery company that sells access to imagery.", "URL": "https://www.planet.com/"}, {"Name": "Radar Interference Tracker (RIT)", "Category": "Satellite Imagery", "Cost": "Free", "Description": "Bellingcat's radar interference tracker can be used to locate and monitor active military radar systems.", "URL": "https://ollielballinger.users.earthengine.app/view/bellingcat-radar-interference-tracker#lon=49.9507;lat=26.6056;zoom=4;"}, {"Name": "SkyFi", "Category": "Satellite Imagery", "Cost": "Paid", "Description": "SkyFi is used to purchase commercial satellite imagery and task (order the collection of images) satellites without a subscription.", "URL": "https://skyfi.com/"}, {"Name": "The European Space Agency (ESA) - Earth Online", "Category": "Satellite Imagery", "Cost": "Free", "Description": "The ESA's Earth Online product offers a portal for accessing satellite imagery and environmental data, supporting a range of applications from climate monitoring to natural disaster assessment.", "URL": "https://earth.esa.int/eogateway/tools"}, {"Name": "Umbra Space", "Category": "Satellite Imagery", "Cost": "Paid", "Description": "Umbra is an American synthetic aperture radar (SAR) satellite imaging company that sells on-demand taskings for satellite imagery.", "URL": "https://umbra.space/"}, {"Name": "Carte.ma", "Category": "Street View", "Cost": "Free", "Description": "Mapping/streetview service for Morocco", "URL": "http://carte.ma/"}, {"Name": "Geograph", "Category": "Street View", "Cost": "Free", "Description": "Georeferenced images.", "URL": "http://geograph.org/"}, {"Name": "Intelligence X Telegram Search", "Category": "Telegram", "Cost": "Free", "Description": "Google-based search engine for Telegram (includes Telegago)", "URL": "https://intelx.io/tools?tab=telegram"}, {"Name": "TGStat", "Category": "Telegram", "Cost": "Partially Free", "Description": "TGStat is a web-based analytics tool for Telegram that monitors active channels and provides profile analytics and statistics. It tracks channel subscribers\u2019 growth rate, reach, and citation index.", "URL": "https://tgstat.com/"}, {"Name": "Telegago", "Category": "Telegram", "Cost": "Free", "Description": "Telegago is a Google Custom Search Engine tailored for searching public Telegram content for OSINT purposes.", "URL": "https://cse.google.com/cse?cx=006368593537057042503:efxu7xprihg"}, {"Name": "Telegram Group Joiner", "Category": "Telegram", "Cost": "Free", "Description": "Automate joining multiple Telegram groups and channels, ideal for researchers monitoring specific topics.", "URL": "https://bellingcat.github.io/telegram-group-joiner/"}, {"Name": "Telegram Phone Number Checker", "Category": "Telegram", "Cost": "Free", "Description": "Command line tool for checking if phone numbers are connected to Telegram accounts and retrieving related information where available.", "URL": "https://colab.research.google.com/github/bellingcat/open-source-research-notebooks/blob/main/notebooks/bellingcat/telegram-phone-number-checker.ipynb"}, {"Name": "TelegramDB", "Category": "Telegram", "Cost": "Partially Free", "Description": "TelegramDB is a searchable database service that allows users to explore public Telegram groups and channels via a dedicated bot.", "URL": "https://www.tgdb.org/page/index"}, {"Name": "Telemetrio", "Category": "Telegram", "Cost": "Partially Free", "Description": "Telemetr.io offers a range of Telegram-related services based on a catalog of Telegram channels: country and category-specific rankings, curated collections, real-time event tracking, and an API.", "URL": "https://telemetr.io/"}, {"Name": "Telemetry", "Category": "Telegram", "Cost": "Partially Free", "Description": "An analytical search tool for Telegram groups and channels.", "URL": "https://www.telemetryapp.io/"}, {"Name": "Telepathy", "Category": "Telegram", "Cost": "Free", "Description": "Telepathy is a versatile Telegram toolkit for OSINT analysts, enabling chat archiving, memberlist gathering, user location lookup, top poster analysis, message mapping, and more.", "URL": "https://github.com/jordanwildon/Telepathy"}, {"Name": "tlgrm.eu channels", "Category": "Telegram", "Cost": "Free", "Description": "Search Telegram channels.", "URL": "http://tlgrm.eu/channels"}, {"Name": "Bellingcat TikTok Date Extract", "Category": "Tiktok", "Cost": "Free", "Description": "Get the exact upload date + time for tiktok video urls", "URL": "https://bellingcat.github.io/tiktok-timestamp"}, {"Name": "TikTokApi", "Category": "Tiktok", "Cost": "Free", "Description": "Python - This is an unofficial api wrapper for TikTok.com in python. With this api you are able to call most trending and fetch specific user information as well as much more.", "URL": "https://pypi.org/project/TikTokApi"}, {"Name": "ADS-B Exchange", "Category": "Transport", "Cost": "Free", "Description": "Live flight tracker (including many miltiary aircraft). Live data available for the past month. Historical data available for purchase by request.", "URL": "https://globe.adsbexchange.com/"}, {"Name": "AirNav RadarBox", "Category": "Transport", "Cost": "Free", "Description": "Live flight tracker.", "URL": "http://radarbox24.com/"}, {"Name": "Airfleets", "Category": "Transport", "Cost": "Free", "Description": "Database for aircraft details.", "URL": "http://airfleets.net/home"}, {"Name": "Airframes", "Category": "Transport", "Cost": "Free", "Description": "A database of aircraft details", "URL": "http://www.airframes.org/"}, {"Name": "Aviation Safety Network", "Category": "Transport", "Cost": "Free", "Description": "Aircraft incident database; can be searched by country, registration, year, etc.", "URL": "https://aviation-safety.net/"}, {"Name": "Carnet.AI", "Category": "Transport", "Cost": "Unknown", "Description": "API which is capable of recognizing the Make", "URL": "http://carnet.ai/"}, {"Name": "Chronotrains", "Category": "Transport", "Cost": "Free", "Description": "Chronotrains is a free interactive map designed to explore the reach of Europe\u2019s extensive rail network. Enter a starting point and travel time to see reachable destinations by train.", "URL": "https://www.chronotrains.com/en"}, {"Name": "Equasis", "Category": "Transport", "Cost": "Free", "Description": "Equasis provides vessel ownership and safety records, as well as shipping company fleet information.", "URL": "https://www.equasis.org/"}, {"Name": "Federal Aviation Administration", "Category": "Transport", "Cost": "Free", "Description": "Nationwide Plane Registry. Search by N-Number (a.k.a. callsign). Comprehensive list of privately owned planes in the US.", "URL": "http://registry.faa.gov/aircraftinquiry/NNum\\_inquiry.aspx"}, {"Name": "FlightAware", "Category": "Transport", "Cost": "Partially Free", "Description": "FlightAware is a global flight-tracking platform that provides real-time data on aircraft movements. It offers live tracking, historical data, and predictive analytics via its website and apps.", "URL": "http://flightaware.com/"}, {"Name": "Flightradar24", "Category": "Transport", "Cost": "Partially Free", "Description": "Flightradar24 is a real-time flight tracking service that provides detailed information about aircraft positions, flight numbers, origins, destinations, historical data, and aircraft information.", "URL": "https://www.flightradar24.com"}, {"Name": "GPSJam", "Category": "Transport", "Cost": "Free", "Description": "GPSJam.org is a daily map that visualizes the GPS/GNSS disruptions on aircraft worldwide. It collects and presents 24-hour data showing areas experiencing interference.", "URL": "https://gpsjam.org/"}, {"Name": "IMO Registry", "Category": "Transport", "Cost": "Free", "Description": "Ship/shipping-related information from the IMO", "URL": "http://webaccounts.imo.org/"}, {"Name": "Icarus Flights", "Category": "Transport", "Cost": "Free", "Description": "Flight tracking platform with 2 years free historical data; highly customizable search parameters", "URL": "https://app.icarus.flights/"}, {"Name": "Illegal, unreported, unregular fishing Vessels List", "Category": "Transport", "Cost": "Free", "Description": "A combined list of known illegal, unreported, unregular fishing vessels", "URL": "https://iuu-vessels.org/Home/Search"}, {"Name": "Live ATC", "Category": "Transport", "Cost": "Free", "Description": "Audio from air traffic control towers in the United States. Aircraft have to identify themselves to ATC towers, so in cases where aircraft are trying to obscure their information from other sites, it might be another way to grab tail numbers or just generally track flights. More complicated to use than e.g. Flightradar24.", "URL": "http://liveatc.net/"}, {"Name": "MarineTraffic", "Category": "Transport", "Cost": "Partially Free", "Description": "An open, community-based project, providing (near) real-time information on the movements of ships and their locations in harbours and ports.", "URL": "https://www.marinetraffic.com/en/ais/home/centerx:25.0/centery:-34.5/zoom:8"}, {"Name": "OpenRailwayMap", "Category": "Transport", "Cost": "Free", "Description": "a detailed online map of the world's railway infrastructure", "URL": "https://wiki.openstreetmap.org/wiki/OpenRailwayMap"}, {"Name": "OpenSky-Network", "Category": "Transport", "Cost": "Free", "Description": "Community, open source flight tracking network.", "URL": "http://opensky-network.org/"}, {"Name": "PlaneFinder", "Category": "Transport", "Cost": "Free", "Description": "Live flight tracker.", "URL": "http://planefinder.net/"}, {"Name": "ShipFinder", "Category": "Transport", "Cost": "Partially Free", "Description": "ShipFinder is an application designed to track vessels in near real-time across the globe.", "URL": "https://shipfinder.co/"}, {"Name": "ShipSpotting.com", "Category": "Transport", "Cost": "Free", "Description": "Community website for uploading pictures & details of vessels spotted around the world.", "URL": "http://shipspotting.com/"}, {"Name": "Tokyo MOU", "Category": "Transport", "Cost": "Free", "Description": "Ship inspection/history database (PSC Database)", "URL": "http://www.tokyo-mou.org/"}, {"Name": "Transit Visualisation", "Category": "Transport", "Cost": "Unknown", "Description": "ch.sbb.netzkarte", "URL": "https://mobility.portal.geops.io/?baselayers=geops.travic"}, {"Name": "VesselFinder", "Category": "Transport", "Cost": "Partially Free", "Description": "Live marine vessel tracker.", "URL": "https://www.vesselfinder.com/"}, {"Name": "WikiRoutes", "Category": "Transport", "Cost": "Free", "Description": "Public transport database.", "URL": "http://wikiroutes.info/"}, {"Name": "Winward", "Category": "Transport", "Cost": "Paid", "Description": "Platform which combines maritime-related data.", "URL": "https://www.wnwd.com/"}, {"Name": "Hoaxy", "Category": "Twitter/X", "Cost": "Partially Free", "Description": "Hoaxy is a web-based search and visualization tool. It helps visualize the spread of information on Bluesky and X (Twitter).", "URL": "https://hoaxy.osome.iu.edu/"}, {"Name": "Twitter Video Downloader", "Category": "Twitter/X", "Cost": "Free", "Description": "Download videos from X (formerly Twitter) by converting tweet URLs into downloadable video links.", "URL": "https://twittervideodownloader.com/"}, {"Name": "Twitter/X Advanced Search", "Category": "Twitter/X", "Cost": "Free", "Description": "Twitter/X Advanced Search is X's own tool to help users find more precise information on the platform by filtering posts according to criteria such as location, user, date or popularity.", "URL": "https://x.com/search-advanced"}, {"Name": "Twitter/X Location Search", "Category": "Twitter/X", "Cost": "Free", "Description": "Search for geocoded tweets by their distance from some coordinates.", "URL": "https://twitter.com/explore"}, {"Name": "DNS History", "Category": "Websites", "Cost": "Free", "Description": "Collection of historical DNS information.", "URL": "http://completedns.com/"}, {"Name": "DomainTools Whois Lookup", "Category": "Websites", "Cost": "Partially Free", "Description": "DomainTools Whois provides detailed domain name registration information, and can be used to investigate details about domains or IP addresses.", "URL": "https://whois.domaintools.com/"}, {"Name": "ICANN Lookup", "Category": "Websites", "Cost": "Free", "Description": "This tool allows you to search for the current registration data of internet domain names.", "URL": "https://lookup.icann.org/"}, {"Name": "Moz Link Explorer", "Category": "Websites", "Cost": "Free", "Description": "Analyse the links of any website.", "URL": "http://moz.com/link-explorer"}, {"Name": "Shodan", "Category": "Websites", "Cost": "Partially Free", "Description": "A search engine for devices that are connected to the internet.", "URL": "https://www.shodan.io/"}, {"Name": "The Information Laundromat", "Category": "Websites", "Cost": "Free", "Description": "A tool for analyzing content replication and site architecture to detect information laundering.", "URL": "https://informationlaundromat.com"}, {"Name": "Vortimo", "Category": "Websites", "Cost": "Paid", "Description": "Suite of tools for website, email, WHOIS, etc. analysis", "URL": "https://www.vortimo.com/"}, {"Name": "WHOIS History", "Category": "Websites", "Cost": "Partially Free", "Description": "Historical WHOIS registration lookup", "URL": "https://whois-history.whoisxmlapi.com/"}, {"Name": "What CMS", "Category": "Websites", "Cost": "Partially Free", "Description": "A tool that you can use to identify the technologies used to power a website.", "URL": "https://whatcms.org/"}, {"Name": "Whoxy", "Category": "Websites", "Cost": "Unknown", "Description": "Whoxy is a domain search engine or whois lookup\" tool to find registration information on a domain", "URL": "https://www.whoxy.com/"}, {"Name": "RadiTube", "Category": "Youtube", "Cost": "Unknown", "Description": "A search engine that searches the subtitles of about 380 (right/left) radical YouTube channels. You query for example for q says\" of \"voter fraud\" in 170", "URL": "https://tool.raditube.com/"}, {"Name": "YouTube Metadata", "Category": "Youtube", "Cost": "Free", "Description": "An alternative to Amnesty's YT viewer, with slightly more information.", "URL": "https://mattw.io/youtube-metadata/"}, {"Name": "youtube-dl", "Category": "Youtube", "Cost": "Free", "Description": "Python tool to download from a variety of sources. Select video / audio formats, quality etc. Updated frequently to support parsing the relevant sources (alternate link: youtube-dl.org)", "URL": "http://rg3.github.io/youtube-dl/"}];
+
+// Build category list
+const cats = [...new Set(TOOLS.map(t => t.Category))].sort();
+
+const catNav = document.getElementById('cat-nav');
+cats.forEach(cat => {
+  const btn = document.createElement('button');
+  btn.className = 'cat-btn';
+  btn.dataset.cat = cat;
+  const count = TOOLS.filter(t => t.Category === cat).length;
+  btn.textContent = `${cat} (${count})`;
+  catNav.appendChild(btn);
+});
+
+// State
+let state = { q: '', cat: 'all', cost: 'all', view: 'grid' };
+
+// Category icons
+const catIcons = {
+  'Maps': '🗺', 'People': '👤', 'Transport': '✈', 'Companies & Finance': '💼',
+  'Environment & Wildlife': '🌿', 'Other Platforms': '📱', 'Satellite Imagery': '🛰',
+  'Misc': '🔧', 'Archiving': '📦', 'Data Organization & Analysis': '📊',
+  'Geolocation': '📍', 'Telegram': '✉', 'Websites': '🌐', 'Metadata': '🔍',
+  'Facial Recognition': '👁', 'Conflict': '⚔', 'Facebook': '🔵', 'Instagram': '📷',
+  'Reverse Image Search': '🖼', 'Twitter/X': '🐦', 'Multiple Platforms': '🔗',
+  'Youtube': '▶', 'Street View': '🚶', 'Tiktok': '🎵'
+};
+
+function costClass(cost) {
+  if (cost === 'Free') return 'cost-Free';
+  if (cost === 'Partially Free') return 'cost-Partially-Free';
+  if (cost === 'Paid') return 'cost-Paid';
+  return 'cost-Unknown';
+}
+
+function costLabel(cost) {
+  if (cost === 'Partially Free') return 'PARTIAL';
+  return (cost || 'UNKNOWN').toUpperCase();
+}
+
+function abbr(name) {
+  return name.replace(/[^A-Za-z0-9]/g,' ').split(' ').filter(Boolean)
+    .slice(0,2).map(w=>w[0]).join('').toUpperCase() || name.slice(0,2).toUpperCase();
+}
+
+function highlight(text, q) {
+  if (!q) return text;
+  const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+  return text.replace(re, '<mark style="background:rgba(0,255,136,0.25);color:inherit;border-radius:2px">$1</mark>');
+}
+
+function render() {
+  const q = state.q.toLowerCase();
+  const filtered = TOOLS.filter(t => {
+    const matchQ = !q || [t.Name, t.Description, t.Category, t.Cost]
+      .some(s => (s||'').toLowerCase().includes(q));
+    const matchCat  = state.cat === 'all' || t.Category === state.cat;
+    const matchCost = state.cost === 'all' || t.Cost === state.cost;
+    return matchQ && matchCat && matchCost;
+  });
+
+  document.getElementById('count').textContent = filtered.length;
+
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  grid.className = 'grid' + (state.view === 'list' ? ' list-view' : '');
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty">No tools match your filters</div>';
+    return;
+  }
+
+  filtered.forEach((t, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.animationDelay = Math.min(i * 0.015, 0.3) + 's';
+
+    const icon = catIcons[t.Category] || abbr(t.Name);
+    const nameHL = highlight(t.Name, state.q);
+    const descHL = highlight(t.Description || '', state.q);
+    const domain = t.URL ? (() => { try { return new URL(t.URL).hostname.replace('www.',''); } catch(e){ return t.URL.slice(0,30); } })() : '';
+
+    card.innerHTML = `
+      <div class="card-head">
+        <div class="card-icon">${icon}</div>
+        <div class="card-title-wrap">
+          <div class="card-name" title="${t.Name}">${nameHL}</div>
+          <div class="card-category">${t.Category}</div>
+        </div>
+      </div>
+      <div class="card-desc">${descHL || '<em style="opacity:0.4">No description available</em>'}</div>
+      <div class="card-footer">
+        <span class="cost-badge ${costClass(t.Cost)}">${costLabel(t.Cost)}</span>
+        ${t.URL ? `<a class="card-link" href="${t.URL}" target="_blank" rel="noopener noreferrer">OPEN ↗</a>` : ''}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// Stats
+const freeCount = TOOLS.filter(t => t.Cost === 'Free').length;
+document.getElementById('stat-free').textContent = freeCount;
+
+// Events
+document.getElementById('search').addEventListener('input', e => {
+  state.q = e.target.value.trim();
+  render();
+});
+
+document.querySelectorAll('[data-cat]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.cat = btn.dataset.cat;
+    document.querySelectorAll('[data-cat]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  });
+});
+
+document.querySelectorAll('[data-cost]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.cost = btn.dataset.cost;
+    document.querySelectorAll('[data-cost]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  });
+});
+
+document.getElementById('view-grid').addEventListener('click', () => {
+  state.view = 'grid';
+  document.getElementById('view-grid').classList.add('active');
+  document.getElementById('view-list').classList.remove('active');
+  render();
+});
+
+document.getElementById('view-list').addEventListener('click', () => {
+  state.view = 'list';
+  document.getElementById('view-list').classList.add('active');
+  document.getElementById('view-grid').classList.remove('active');
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
