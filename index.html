@@ -1223,7 +1223,7 @@ document.querySelectorAll('[data-acat]').forEach(btn => {
     btn.classList.add('active'); renderAnalytical();
   });
 });
-renderAnalytical();
+// renderAnalytical called after auth
 
 // ── LEARNING TAB ──
 let levelFilter = 'all';
@@ -1256,7 +1256,7 @@ document.querySelectorAll('[data-level]').forEach(btn => {
     btn.classList.add('active'); renderLearning();
   });
 });
-renderLearning();
+// renderLearning called after auth
 
 // ══════════════════════════════════════
 //  AUTH SYSTEM
@@ -1314,6 +1314,8 @@ function activateSession(user) {
   buildRecentlyAdded();
   renderBookmarks();
   renderTools();
+  renderAnalytical();
+  renderLearning();
 }
 
 function doLogout() { clearSess(); location.reload(); }
